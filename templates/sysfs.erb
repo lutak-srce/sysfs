@@ -1,0 +1,8 @@
+<% if @comment -%>
+# <%= @comment %>
+<% end -%>
+<% if @type == 'value' -%>
+<%= @attribute %> = <%= @value %>
+<% else -%>
+<%= @type %> <%= @attribute %> = <%= @value %>
+<% end -%>

@@ -1,0 +1,111 @@
+#!/bin/sh
+#
+# chkconfig: 12345 01 99
+# description: Loads sysfs settings from config files
+#
+# /etc/rc.d/init.d/sysfsutils
+# (C) 2013-2014 Jakov Sosic (jsosic <at> gmail.com)
+#
+### BEGIN INIT INFO
+# Provides:             sysfs
+# Required-Start:
+# Required-Stop:
+# Default-Start: 1 2 3 4 5
+# Default-Stop: 0 6
+# Description: Enables sysfs settings to be persistent across
+#              reboots. Inspired by Debian package sysfsutils.
+# Short-Description: Loads sysfs settings from config files
+### END INIT INFO
+
+# Source function library.
+. /etc/init.d/functions
+
+RETVAL=0
+
+CONFFILE=/etc/sysfs.conf
+CONFDIR=/etc/sysfs.d
+
+[ -r "$CONFFILE" -o -d "$CONFDIR" ] || exit 0
+
+load_conffile() {
+    FILE="$1"
+    sed  's/#.*$//; /^[[:space:]]*$/d; 
+	  s/^[[:space:]]*\([^=[:space:]]*\)[[:space:]]*\([^=[:space:]]*\)[[:space:]]*=[[:space:]]*\(.*\)/\1 \2 \3/' \
+	  $FILE | {
+	while read f1 f2 f3; do
+	    if [ "$f1" = "mode" -a -n "$f2" -a -n "$f3" ]; then
+		if [ -f "/sys/$f2" ] || [ -d "/sys/$f2" ]; then
+		    chmod "$f3" "/sys/$f2"
+		else
+		    echo "unknown attribute $f2"
+                    RETVAL=1
+		fi
+	    elif [ "$f1" = "owner" -a -n "$f2" -a -n "$f3" ]; then
+		if [ -f "/sys/$f2" ]; then
+		    chown "$f3" "/sys/$f2"
+		else
+		    echo "unknown attribute $f2"
+                    RETVAL=1
+		fi
+	    elif [ "$f1" -a -n "$f2" -a -z "$f3" ]; then
+		if [ -f "/sys/$f1" ]; then
+		    # Some fields need a terminating newline, others
+		    # need the terminating newline to be absent :-(
+		     echo -n "$f2" > "/sys/$f1" 2>/dev/null ||
+			echo "$f2" > "/sys/$f1"
+		else
+		    echo "unknown attribute $f1"
+                    RETVAL=1
+		fi
+	    else
+		echo "syntax error in $CONFFILE: '$f1' '$f2' '$f3'"
+		echo 1
+		RETVAL=1
+	    fi
+	done
+    }
+}
+
+start() {
+    echo -n $"Loading sysfs settings: "
+
+    for file in $CONFFILE $CONFDIR/*.conf; do
+        [ -r "$file" ] || continue
+        load_conffile "$file"
+    done
+
+    RETVAL=$?
+    echo
+}
+
+
+stop() {
+    echo -n $"Unloading sysfs settings: "
+
+    echo
+}
+
+
+# See how we were called.
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    reload)
+        echo "Sysfs can't reload its configuration, you have to restart it"
+        RETVAL=$?
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|reload}"
+        ;;
+esac
+exit $RETVAL
