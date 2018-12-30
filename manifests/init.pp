@@ -17,15 +17,24 @@ define sysfs (
   # Parent purged directory
   include ::sysfs::base
 
-  # The permanent change
-  file { "/etc/sysfs.d/${title}.conf":
-    ensure  => $ensure,
-    owner   => root,
-    group   => root,
-    mode    => '0644',
-    content => template('sysfs/sysfs.erb'),
-    notify  => Service['sysfsutils'],
+  if $facts['systemd'] {
+
+    concat::fragment { "sysfs_systemd_tmpfiles_${title}":
+      target  => 'sysfs_systemd_tmpfiles',
+      content => "# ${comment}\nw /sys/${attribute} - - - - ${value}\n",
+      order   => '200',
+    }
+
+  } else {
+
+    file { "/etc/sysfs.d/${title}.conf":
+      ensure  => $ensure,
+      owner   => root,
+      group   => root,
+      mode    => '0644',
+      content => template('sysfs/sysfs.erb'),
+      notify  => Service['sysfsutils'],
+    }
   }
-# "# ${comment}\n${title} = ${value}\n",
 
 }
