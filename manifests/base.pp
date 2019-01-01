@@ -46,8 +46,8 @@ class sysfs::base {
   }
 
   service { 'sysfsutils':
-    ensure  => running,
-    enable  => true,
+    ensure => running,
+    enable => true,
   }
 
 }
