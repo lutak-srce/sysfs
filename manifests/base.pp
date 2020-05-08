@@ -1,53 +1,44 @@
 #
 # = Class: sysfs::base
 #
-# Install sysfsutils
-#
 class sysfs::base {
 
-  File {
-    ensure  => file,
-    owner   => root,
-    group   => root,
-    mode    => '0644',
-    require => Package['sysfsutils'],
-  }
+  if $facts['systemd'] {
 
-  package { 'sysfsutils':
-    ensure => present,
-  }
+    concat { 'sysfs_systemd_tmpfiles':
+      path    => "/etc/tmpfiles.d/sysfs.conf",
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      notify  => Exec['sysfs_systemd_tmpfiles_create'],
+    }
 
-  file { '/etc/sysfs.conf':
-    source  => 'puppet:///modules/sysfs/sysfs.conf',
-  }
+    exec { 'sysfs_systemd_tmpfiles_create':
+      refreshonly => true,
+      command     => '/bin/systemd-tmpfiles --create --prefix=/sys',
+    }
 
-  file { '/etc/sysfs.d':
-    ensure  => directory,
-    recurse => true,
-    purge   => true,
-  }
+    concat::fragment { 'sysfs_systemd_tmpfiles_header':
+      target  => 'sysfs_systemd_tmpfiles',
+      content => "# This file is being maintained by Puppet.\n",
+      order   => '100',
+    }
 
-  case $::operatingsystem {
-    default: {}
-    /CentOS|RedHat/: {
-      file { '/etc/init.d/sysfsutils':
-        mode   => '0755',
-        source => 'puppet:///modules/sysfs/init.RedHat',
-        before => Service['sysfsutils'],
+  } else {
+
+    case $::operatingsystem {
+      default: {}
+      /CentOS|RedHat/: {
+        class { 'sysfs::sysvinit':
+          initd_source => 'puppet:///modules/sysfs/init.RedHat',
+        }
+      }
+      'Ubuntu': {
+        class { 'sysfs::sysvinit':
+          initd_source => 'puppet:///modules/sysfs/init.Ubuntu',
+        }
       }
     }
-    'Ubuntu': {
-      file { '/etc/init.d/sysfsutils':
-        mode   => '0755',
-        source => 'puppet:///modules/sysfs/init.Ubuntu',
-        before => Service['sysfsutils'],
-      }
-    }
-  }
-
-  service { 'sysfsutils':
-    ensure => running,
-    enable => true,
   }
 
 }
