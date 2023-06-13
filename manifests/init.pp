@@ -11,10 +11,6 @@ define sysfs (
   $comment = undef,
 ) {
 
-  ### Input parameters validation
-  validate_re($type, ['value', 'mode','owner'], 'Valid values are: value, mode, owner')
-
-  # Parent purged directory
   include ::sysfs::base
 
   if $facts['systemd'] {
