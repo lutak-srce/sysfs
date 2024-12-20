@@ -26,7 +26,7 @@ class sysfs::base {
 
   } else {
 
-    case $::operatingsystem {
+    case $facts['os']['name'] {
       default: {}
       /CentOS|RedHat/: {
         class { 'sysfs::sysvinit':
